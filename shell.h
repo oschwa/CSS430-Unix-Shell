@@ -15,6 +15,8 @@
 #define RD 0
 #define WR 1
 
+char * prevCommand;
+
 bool equal(char *a, char *b);
 int fetchline(char **line);
 int interactiveShell();

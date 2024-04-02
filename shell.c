@@ -34,10 +34,22 @@ int interactiveShell() {
 //  processes command and initiates jobs.
 void processLine(char *line) { 
 
-    printf("processing line: %s\n", line); 
-
     //  length of line
     int len = strlen(line) + 1;
+
+    //  make a copy of the line to preserve the original 
+    //  input.
+    char * lineCopy = (char *)malloc(len);
+    strcpy(lineCopy, line);
+
+    if (strcmp(line, "!!") == 0) {
+      free(lineCopy);
+      lineCopy = (char *)malloc(strlen(prevCommand) + 1);
+      strcpy(lineCopy, prevCommand);
+    }
+
+    //  boolean for keeping track of concurrency.
+    bool isConcurrent = false;
 
     //  array for all command arguments (including command).
     char *args[len];
@@ -49,16 +61,22 @@ void processLine(char *line) {
     int i = 0;
 
     //  delimiter for string tokens.
-    curr_s = strtok(line, " ");
+    curr_s = strtok(lineCopy, " ");
 
     while (curr_s != NULL) {
-        args[i++] = curr_s;
+        if (strcmp(curr_s, "&") != 0) {
+          args[i++] = curr_s;
+        }
+        //  if the concurrency operator '&' is found,
+        //  then set flag.
+        else {
+          isConcurrent = true;
+          break;
+        }
         curr_s = strtok(NULL, " ");
     }
 
     args[i] = NULL;
-
-    printf("First argument is: %s\n", args[0]);
 
     //  fork a new process.
     int pid = fork();
@@ -72,7 +90,16 @@ void processLine(char *line) {
             return;
         }
     } else {
-        wait(NULL);
+        //  if the concurrency flag is false, then
+        //  wait for the child to terminate.
+        if (!isConcurrent) wait();
+
+        free(lineCopy);
+
+        //  copy successful shell command string.
+        free(prevCommand);
+        prevCommand = malloc(len);
+        strcpy(prevCommand, line);
     }
 }
 
