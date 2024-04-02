@@ -31,6 +31,27 @@ int interactiveShell() {
   return 0;
 }
 
+//  create a new parent and child process for executing the
+//  shell command.
+void createNewProcess(char ** args, bool concurrent) {
+    //  fork a new process.
+    int pid = fork();
+
+    if (pid < 0) {
+        perror("ERROR: Could not fork - please try again\n");
+        return;
+    } else if (pid == 0) {
+        if (execvp(args[0], args) == -1) {
+            perror("ERROR: Invalid command - check command syntax\n");
+            return;
+        }
+    } else {
+        //  if the concurrency flag is false, then
+        //  wait for the child to terminate.
+        if (!concurrent) wait();
+    }
+}
+
 //  processes command and initiates jobs.
 void processLine(char *line) { 
 
@@ -49,7 +70,7 @@ void processLine(char *line) {
     }
 
     //  boolean for keeping track of concurrency.
-    bool isConcurrent = false;
+    bool concurrent = false;
 
     //  array for all command arguments (including command).
     char *args[len];
@@ -70,7 +91,7 @@ void processLine(char *line) {
         //  if the concurrency operator '&' is found,
         //  then set flag.
         else {
-          isConcurrent = true;
+          concurrent = true;
           break;
         }
         curr_s = strtok(NULL, " ");
@@ -78,29 +99,15 @@ void processLine(char *line) {
 
     args[i] = NULL;
 
-    //  fork a new process.
-    int pid = fork();
+    createNewProcess(args, concurrent);
 
-    if (pid < 0) {
-        perror("ERROR: Could not fork - please try again\n");
-        return;
-    } else if (pid == 0) {
-        if (execvp(args[0], args) == -1) {
-            perror("ERROR: Invalid command - check command syntax\n");
-            return;
-        }
-    } else {
-        //  if the concurrency flag is false, then
-        //  wait for the child to terminate.
-        if (!isConcurrent) wait();
 
-        free(lineCopy);
+    free(lineCopy);
 
-        //  copy successful shell command string.
-        free(prevCommand);
-        prevCommand = malloc(len);
-        strcpy(prevCommand, line);
-    }
+    //  copy successful shell command string.
+    free(prevCommand);
+    prevCommand = malloc(len);
+    strcpy(prevCommand, line);
 }
 
 int runTests() {
