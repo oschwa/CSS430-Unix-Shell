@@ -14,6 +14,7 @@
 
 #define RD 0
 #define WR 1
+#define ARG_LIMIT 12
 
 char * prevCommand;
 
@@ -21,6 +22,7 @@ bool equal(char *a, char *b);
 int fetchline(char **line);
 int interactiveShell();
 int runTests();
+void execute(char ** args, bool concurrent);
 void processLine(char *line);
 int main();
 

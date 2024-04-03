@@ -21,6 +21,8 @@ int interactiveShell() {
     if (n == -1 || equal(line, "exit")) {
       should_run = false;
       continue;
+    } else if (equal(line, "!!")) {
+      processLine(prevCommand);
     }
     if (equal(line, "")) {
       continue;
@@ -28,12 +30,13 @@ int interactiveShell() {
     processLine(line);
   }
   free(line);
+  free(prevCommand);
   return 0;
 }
 
 //  create a new parent and child process for executing the
 //  shell command.
-void createNewProcess(char ** args, bool concurrent) {
+void execute(char ** args, bool concurrent) {
     //  fork a new process.
     int pid = fork();
 
@@ -42,72 +45,77 @@ void createNewProcess(char ** args, bool concurrent) {
         return;
     } else if (pid == 0) {
         if (execvp(args[0], args) == -1) {
-            perror("ERROR: Invalid command - check command syntax\n");
+            perror("ERROR: command failed to execute - check command syntax\n");
             return;
         }
     } else {
         //  if the concurrency flag is false, then
         //  wait for the child to terminate.
-        if (!concurrent) wait();
+        if (!concurrent) wait(NULL);
     }
 }
 
 //  processes command and initiates jobs.
 void processLine(char *line) { 
 
-    //  length of line
-    int len = strlen(line) + 1;
+    //  split string using ' ' as a delimiter.
+    char * arg = strtok(line, " ");
 
-    //  make a copy of the line to preserve the original 
-    //  input.
-    char * lineCopy = (char *)malloc(len);
-    strcpy(lineCopy, line);
+    //  use an array of string to hold arguments.
+    char * args[ARG_LIMIT + 1];
 
-    if (strcmp(line, "!!") == 0) {
-      free(lineCopy);
-      lineCopy = (char *)malloc(strlen(prevCommand) + 1);
-      strcpy(lineCopy, prevCommand);
-    }
-
-    //  boolean for keeping track of concurrency.
+    //  bool for concurrency flag.
     bool concurrent = false;
 
-    //  array for all command arguments (including command).
-    char *args[len];
-
-    //  stores current string.
-    char * curr_s;
+    //  bool for signaling end of command.
+    bool end = false;
 
     //  counter for args.
     int i = 0;
 
-    //  delimiter for string tokens.
-    curr_s = strtok(lineCopy, " ");
+    //  iterate through each token.
+    while( arg != NULL ) {
+      //  if a concurrency operator is detected,
+      //  set the flag to true.
+      if (equal(arg, "&")) {
+        concurrent = true;
+        end = true;
+      } 
+      //  if the wait operator is detected, 
+      //  set the flag to false.
+      else if (equal(arg, ";")) {
+        concurrent = false;
+        end = true;
+      } 
+      //  otherwise, add the command to the
+      //  command args.
+      else {
+        args[i++] = arg;
+      }
 
-    while (curr_s != NULL) {
-        if (strcmp(curr_s, "&") != 0) {
-          args[i++] = curr_s;
-        }
-        //  if the concurrency operator '&' is found,
-        //  then set flag.
-        else {
-          concurrent = true;
-          break;
-        }
-        curr_s = strtok(NULL, " ");
+      arg = strtok(NULL, " ");
+
+      //  if the end of a command has been reached, 
+      //  but there are more arguments, execute the 
+      //  current command and it's arguments. Before
+      //  further iterating.
+      if (end && arg != NULL) {
+        args[i] = NULL;
+        execute(args, concurrent);
+        memset(args, 0, sizeof args);
+        i = 0;
+        end = false;
+        concurrent = false;
+      }
     }
 
-    args[i] = NULL;
-
-    createNewProcess(args, concurrent);
-
-
-    free(lineCopy);
-
-    //  copy successful shell command string.
-    free(prevCommand);
-    prevCommand = malloc(len);
-    strcpy(prevCommand, line);
+    args[i] = NULL; 
+    //  final command is executed.
+    execute(args, concurrent);
+    //  free the token string.
+    free(arg);
+    //  empty argument array.
+    memset(args, 0, sizeof args);
 }
 
 int runTests() {
