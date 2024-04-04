@@ -35,17 +35,31 @@ int interactiveShell() {
   return 0;
 }
 
-void fileIn(char * arg, char * fileName) {
+void executeToFile(char ** args, char * fileName) {
+  
   //  open the file.
-  FILE * f;
-  fopen(fileName, "w");
+  int fd = open(fileName, O_WRONLY);
   //  check file integrity.
-  if (f == NULL) {
+  if (fd == -1) {
     perror("ERROR: file could not be opened\n");
     return;
+  } 
+  //  fork and create a child process.
+  int pid = fork();
+
+  if (pid < 0) {
+    perror("Failed to execute input redirection.\n");
+  } else if (pid == 0) {
+    //  use dup2 to duplicate file to stdin.
+    dup2(fd, STDOUT_FILENO);
+    //  execute command to be outputted to file.
+    execvp(args[0], args);
+  } else {
+    wait(NULL);
+    //  close file
+    close(fd);
   }
-  //  close file
-  fclose(f);
+
 }
 //  create a new parent and child process for executing the
 //  shell command.
@@ -122,8 +136,9 @@ void processLine(char *line) {
       //  if a redirect (command to file)
       //  is detected, then manage it.
       if (redirect_in) {
-        fileIn(args[0], args[1]);
+        executeToFile(args, arg);
         redirect_in = false;
+        break;
       }
 
       //  if the end of a command has been reached, 

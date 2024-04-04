@@ -1,0 +1,7 @@
+total 112
+-rw-r--r--@ 1 oliverschwab  staff     19 Mar 31 11:22 README.md
+-rwxr-xr-x@ 1 oliverschwab  staff  34754 Apr  4 11:23 a.out
+-rw-r--r--@ 1 oliverschwab  staff     70 Apr  3 17:38 example.txt
+-rw-r--r--@ 1 oliverschwab  staff   4999 Apr  4 11:23 shell.c
+-rw-r--r--@ 1 oliverschwab  staff    616 Apr  4 11:23 shell.h
+-rw-r--r--@ 1 oliverschwab  staff      0 Apr  4 11:24 thisfile.txt
