@@ -16,12 +16,13 @@
 #define WR 1
 #define ARG_LIMIT 12
 
-char * prevCommand;
+char * prev_command;
 
 bool equal(char *a, char *b);
 int fetchline(char **line);
 int interactiveShell();
 int runTests();
+void fileIn(char * arg, char * fileName);
 void execute(char ** args, bool concurrent);
 void processLine(char *line);
 int main();

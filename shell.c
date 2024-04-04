@@ -11,6 +11,7 @@ int main(int argc, char **argv) {
 // interactive shell to process commands
 int interactiveShell() {
   bool should_run = true;
+  prev_command = NULL;
   char *line = calloc(1, MAXLINE);
   while (should_run) {
     printf(PROMPT);
@@ -22,18 +23,30 @@ int interactiveShell() {
       should_run = false;
       continue;
     } else if (equal(line, "!!")) {
-      processLine(prevCommand);
-    }
-    if (equal(line, "")) {
+      processLine(prev_command);
+    } else if (equal(line, "")) {
       continue;
+    } else {
+      processLine(line);
     }
-    processLine(line);
   }
   free(line);
-  free(prevCommand);
+  free(prev_command);
   return 0;
 }
 
+void fileIn(char * arg, char * fileName) {
+  //  open the file.
+  FILE * f;
+  fopen(fileName, "w");
+  //  check file integrity.
+  if (f == NULL) {
+    perror("ERROR: file could not be opened\n");
+    return;
+  }
+  //  close file
+  fclose(f);
+}
 //  create a new parent and child process for executing the
 //  shell command.
 void execute(char ** args, bool concurrent) {
@@ -46,6 +59,7 @@ void execute(char ** args, bool concurrent) {
     } else if (pid == 0) {
         if (execvp(args[0], args) == -1) {
             perror("ERROR: command failed to execute - check command syntax\n");
+            printf("%s\n", args[0]);
             return;
         }
     } else {
@@ -57,9 +71,11 @@ void execute(char ** args, bool concurrent) {
 
 //  processes command and initiates jobs.
 void processLine(char *line) { 
-
+    //  copy line to preserve original input.
+    char * copy = malloc(sizeof(line));
+    strcpy(copy, line);
     //  split string using ' ' as a delimiter.
-    char * arg = strtok(line, " ");
+    char * arg = strtok(copy, " ");
 
     //  use an array of string to hold arguments.
     char * args[ARG_LIMIT + 1];
@@ -70,14 +86,22 @@ void processLine(char *line) {
     //  bool for signaling end of command.
     bool end = false;
 
+    //  bool for signaling a redirect of I/O
+    bool redirect_in = false;
+
     //  counter for args.
     int i = 0;
 
     //  iterate through each token.
     while( arg != NULL ) {
+      //  if a redirect is detected, then manage 
+      //  accordingly. 
+      if (equal(arg, ">")) {
+        redirect_in = true;
+      }
       //  if a concurrency operator is detected,
       //  set the flag to true.
-      if (equal(arg, "&")) {
+      else if (equal(arg, "&")) {
         concurrent = true;
         end = true;
       } 
@@ -95,6 +119,13 @@ void processLine(char *line) {
 
       arg = strtok(NULL, " ");
 
+      //  if a redirect (command to file)
+      //  is detected, then manage it.
+      if (redirect_in) {
+        fileIn(args[0], args[1]);
+        redirect_in = false;
+      }
+
       //  if the end of a command has been reached, 
       //  but there are more arguments, execute the 
       //  current command and it's arguments. Before
@@ -111,9 +142,16 @@ void processLine(char *line) {
 
     args[i] = NULL; 
     //  final command is executed.
+
     execute(args, concurrent);
     //  free the token string.
     free(arg);
+    //  save input string to previous command global.
+    free(prev_command);
+    prev_command = malloc(sizeof(line));
+    strcpy(prev_command, line);
+    //  free the line copy.
+    free(copy);
     //  empty argument array.
     memset(args, 0, sizeof args);
 }
