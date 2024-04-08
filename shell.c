@@ -36,31 +36,63 @@ int interactiveShell() {
 }
 
 void executeToFile(char ** args, char * fileName) {
-  
-  //  open the file.
-  int fd = open(fileName, O_WRONLY);
-  //  check file integrity.
-  if (fd == -1) {
-    perror("ERROR: file could not be opened\n");
-    return;
-  } 
   //  fork and create a child process.
   int pid = fork();
-
   if (pid < 0) {
     perror("Failed to execute input redirection.\n");
   } else if (pid == 0) {
+    //  open the file.
+    int fd = open(fileName, O_WRONLY | O_APPEND | O_CREAT);
+    //  check file integrity.
+    if (fd == -1) {
+      perror("ERROR: file could not be opened\n");
+      close(fd);
+      return;
+    }
     //  use dup2 to duplicate file to stdin.
     dup2(fd, STDOUT_FILENO);
     //  execute command to be outputted to file.
-    execvp(args[0], args);
-  } else {
-    wait(NULL);
-    //  close file
+    if (execvp(args[0], args) == -1) {
+      perror("ERROR: command failed to execute - check command syntax\n");
+      return;
+    }
+    //  close file.
     close(fd);
+  } else {
+    wait( NULL );
   }
-
 }
+
+//  takes contents of text file and uses it as
+//  input for command.
+void executeFromFile(char ** args, char * fileName) {
+  //  fork and create a child process.
+  int pid = fork();
+  if (pid < 0) {
+    perror("Failed to execute input redirection.\n");
+  } else if (pid == 0) {
+    //  open the file.
+    int fd = open(fileName, O_RDONLY);
+    //  check file integrity.
+    if (fd == -1) {
+      perror("ERROR: file could not be opened\n");
+      close(fd);
+      return;
+    }
+    //  use dup2 to duplicate file to stdin.
+    dup2(fd, STDIN_FILENO);
+    //  execute command to be outputted to file.
+    if (execvp(args[0], args) == -1) {
+      perror("ERROR: command failed to execute - check command syntax\n");
+      return;
+    }
+    //  close file.
+    close(fd);
+  } else {
+    wait( NULL );
+  }
+}
+
 //  create a new parent and child process for executing the
 //  shell command.
 void execute(char ** args, bool concurrent) {
@@ -92,7 +124,7 @@ void processLine(char *line) {
     char * arg = strtok(copy, " ");
 
     //  use an array of string to hold arguments.
-    char * args[ARG_LIMIT + 1];
+    char * args[sizeof(line) + 1];
 
     //  bool for concurrency flag.
     bool concurrent = false;
@@ -100,9 +132,9 @@ void processLine(char *line) {
     //  bool for signaling end of command.
     bool end = false;
 
-    //  bool for signaling a redirect of I/O
+    //  bools for signaling a redirect of I/O
     bool redirect_in = false;
-
+    bool redirect_out = false;
     //  counter for args.
     int i = 0;
 
@@ -112,6 +144,8 @@ void processLine(char *line) {
       //  accordingly. 
       if (equal(arg, ">")) {
         redirect_in = true;
+      } else if (equal(arg, "<")) {
+        redirect_out = true;
       }
       //  if a concurrency operator is detected,
       //  set the flag to true.
@@ -136,8 +170,12 @@ void processLine(char *line) {
       //  if a redirect (command to file)
       //  is detected, then manage it.
       if (redirect_in) {
+        args[i] = NULL;
         executeToFile(args, arg);
-        redirect_in = false;
+        break;
+      } else if (redirect_out) {
+        args[i] = NULL;
+        executeFromFile(args, arg);
         break;
       }
 
@@ -155,20 +193,22 @@ void processLine(char *line) {
       }
     }
 
-    args[i] = NULL; 
-    //  final command is executed.
+    if (!redirect_in && !redirect_out) {
+      args[i] = NULL; 
+      //  final command is executed.
 
-    execute(args, concurrent);
-    //  free the token string.
-    free(arg);
-    //  save input string to previous command global.
-    free(prev_command);
-    prev_command = malloc(sizeof(line));
-    strcpy(prev_command, line);
-    //  free the line copy.
-    free(copy);
-    //  empty argument array.
-    memset(args, 0, sizeof args);
+      execute(args, concurrent);
+      //  free the token string.
+      free(arg);
+      //  save input string to previous command global.
+      free(prev_command);
+      prev_command = malloc(sizeof(line));
+      strcpy(prev_command, line);
+      //  free the line copy.
+      free(copy);
+      //  empty argument array.
+      memset(args, 0, sizeof args);
+    }
 }
 
 int runTests() {

@@ -23,6 +23,7 @@ int fetchline(char **line);
 int interactiveShell();
 int runTests();
 void executeToFile(char ** args, char * fileName);
+void executeFromFile(char ** args, char * fileName);
 void execute(char ** args, bool concurrent);
 void processLine(char *line);
 int main();
