@@ -1,7 +1,6 @@
-total 2256
--rw-r--r--@ 1 oliverschwab  staff       19 Mar 31 11:22 README.md
--rwxr-xr-x@ 1 oliverschwab  staff    34802 Apr  8 11:03 a.out
--r--------@ 1 oliverschwab  staff        0 Apr  8 11:03 junk.txt
--rw-r--r--@ 1 oliverschwab  staff     6291 Apr  8 11:02 shell.c
--rw-r--r--@ 1 oliverschwab  staff      676 Apr  8 10:58 shell.h
--rw-r--r--@ 1 oliverschwab  staff  1100784 Apr  8 11:03 shell.h.gch
+README.md
+a.out
+junk.txt
+shell.c
+shell.h
+shell.h.gch

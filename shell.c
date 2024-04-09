@@ -1,3 +1,17 @@
+/**
+ * Author: Oliver Schwab
+ * Class: CSS430 Spring 2024
+ * Professor: Faisal Ahmed 
+ * Program: Unix Shell 
+ * Description: A Unix shell capable of executing commands the following capabilities...
+ *    Creating child processes using fork().
+ *    Running commands on child processes using execvp().
+ *    Using a history feature via the command "!!".
+ *    Redirecting I/O using "<" and ">".
+ *    Using commands via a pipe with "|".
+ * Issues with program: "|" works with two commands, however it will print a 
+ * "no such file exists" error alongside working input. 
+*/
 #include "shell.h"
 
 int main(int argc, char **argv) {
@@ -24,6 +38,8 @@ int interactiveShell() {
       continue;
     } else if (equal(line, "!!")) {
       processLine(prev_command);
+    } else if (equal(line, "ascii")) {
+      ascii();
     } else if (equal(line, "")) {
       continue;
     } else {
@@ -35,6 +51,68 @@ int interactiveShell() {
   return 0;
 }
 
+//  runs a pipe operation.
+bool usePipe(char ** args1, char ** args2) {
+  //  create a pipe.
+  int pipe_fd[2];
+  int pid;
+
+  //  use pipe()
+  if (pipe(pipe_fd) < 0) {
+    perror("Pipe could not open.\n");
+    return false;
+  }
+
+  //  create a new child process.
+  pid = fork(); 
+
+  if (pid < 0) {
+    perror("Failed to create new processes.\n");
+    return false;
+  } else if (pid == 0) {
+    //  close STDOUT.
+    //  make pipe the same as stdout.
+    close(pipe_fd[0]);
+    dup2(pipe_fd[1], STDOUT_FILENO);
+    close(pipe_fd[1]);
+    //  execute first command.
+    if (execvp(args1[0], args1) == -1) {
+      perror("Failed to execute first command.\n");
+      exit(1);
+    }
+  } else {
+    //  fork another new process.
+    int pid2 = fork();
+
+    if (pid2 < 0) {
+      perror("Failed to create new processes.\n");
+      return false;
+    } else if (pid2 == 0) {
+      //  close STDIN.
+      //  make pipe the same as stdin.
+      close(pipe_fd[1]);
+      dup2(pipe_fd[0], STDIN_FILENO);
+      close(pipe_fd[0]);
+      //  execute second command.
+      if (execvp(args2[0], args2) == -1) {
+        perror("Failed to execute second command\n");
+        exit(1);
+      } 
+    } else {
+      close(pipe_fd[0]);
+      close(pipe_fd[1]);
+
+      int stat1, stat2;
+      // Wait for the first child process.
+      waitpid(pid, &stat1, 0);
+      // Wait for the second child process.
+      waitpid(pid2, &stat2, 0);
+    }
+  }
+  return true;
+}
+
+//  conducts output redirection.
 void executeToFile(char ** args, char * fileName) {
   //  fork and create a child process.
   int pid = fork();
@@ -132,17 +210,26 @@ void processLine(char *line) {
     //  bool for signaling end of command.
     bool end = false;
 
+    //  bools for signaling a pipe.
+    bool is_pipe = false;
+    bool success = false;
     //  bools for signaling a redirect of I/O
     bool redirect_in = false;
     bool redirect_out = false;
+
     //  counter for args.
     int i = 0;
 
     //  iterate through each token.
     while( arg != NULL ) {
+      //  if a pipe is detected, then prepare
+      //  a pipe file descriptor.
+      if (equal(arg, "|")) {
+        is_pipe = true;
+      }
       //  if a redirect is detected, then manage 
       //  accordingly. 
-      if (equal(arg, ">")) {
+      else if (equal(arg, ">")) {
         redirect_in = true;
       } else if (equal(arg, "<")) {
         redirect_out = true;
@@ -167,9 +254,25 @@ void processLine(char *line) {
 
       arg = strtok(NULL, " ");
 
+      //  if a pipe operation is detected, then
+      //  call usePipe().
+      if (is_pipe) {
+        //  set up argument array for second command.
+        char *args2[2];
+        args2[0] = arg;
+        args2[1] = NULL;
+
+        // begin pipe operations.
+        args[i] = NULL;
+
+        if (!usePipe(args, args2)) {
+          break;
+        }
+        is_pipe = false;
+      }
       //  if a redirect (command to file)
       //  is detected, then manage it.
-      if (redirect_in) {
+      else if (redirect_in) {
         args[i] = NULL;
         executeToFile(args, arg);
         break;
@@ -183,7 +286,7 @@ void processLine(char *line) {
       //  but there are more arguments, execute the 
       //  current command and it's arguments. Before
       //  further iterating.
-      if (end && arg != NULL) {
+      else if (end && arg != NULL) {
         args[i] = NULL;
         execute(args, concurrent);
         memset(args, 0, sizeof args);
@@ -196,7 +299,6 @@ void processLine(char *line) {
     if (!redirect_in && !redirect_out) {
       args[i] = NULL; 
       //  final command is executed.
-
       execute(args, concurrent);
       //  free the token string.
       free(arg);
@@ -209,6 +311,16 @@ void processLine(char *line) {
       //  empty argument array.
       memset(args, 0, sizeof args);
     }
+}
+
+//  prints ASCII art.
+void ascii() {
+  printf(" /-------/\n");
+  printf(" | O  O |\n");
+  printf("/| .  . |/\n");
+  printf(" |  ''  |\n");
+  printf(" |''''''|\n");
+  printf("I tried to make Spongebob\n");
 }
 
 int runTests() {
