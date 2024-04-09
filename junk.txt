@@ -1,6 +1,0 @@
-README.md
-a.out
-junk.txt
-shell.c
-shell.h
-shell.h.gch
