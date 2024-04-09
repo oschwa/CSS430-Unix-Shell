@@ -11,6 +11,7 @@
  *    Using commands via a pipe with "|".
  * Issues with program: "|" works with two commands, however it will print a 
  * "no such file exists" error alongside working input. 
+ * Built off of starter code provided by Professor Pisan's material. 
 */
 #include "shell.h"
 

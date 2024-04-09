@@ -1,3 +1,18 @@
+/**
+ * Author: Oliver Schwab
+ * Class: CSS430 Spring 2024
+ * Professor: Faisal Ahmed 
+ * Program: Unix Shell 
+ * Description: A Unix shell capable of executing commands the following capabilities...
+ *    Creating child processes using fork().
+ *    Running commands on child processes using execvp().
+ *    Using a history feature via the command "!!".
+ *    Redirecting I/O using "<" and ">".
+ *    Using commands via a pipe with "|".
+ * Issues with program: "|" works with two commands, however it will print a 
+ * "no such file exists" error alongside working input. 
+ * Built off of starter code provided by Professor Pisan's material. 
+*/
 #ifndef SHELL_H
 #define SHELL_H
 
